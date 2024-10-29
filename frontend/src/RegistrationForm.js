@@ -2,8 +2,13 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-// Функции для работы с Base64URL
+// Функция для преобразования строки base64url в Uint8Array
 function base64urlToUint8Array(base64urlString) {
+    if (!base64urlString || typeof base64urlString !== 'string') {
+        console.error('Invalid base64urlString:', base64urlString);
+        return new Uint8Array(); // возвращаем пустой массив, если строка недействительна
+    }
+
     const padding = '='.repeat((4 - (base64urlString.length % 4)) % 4);
     const base64 = (base64urlString + padding)
         .replace(/-/g, '+')
@@ -16,6 +21,7 @@ function base64urlToUint8Array(base64urlString) {
     return outputArray;
 }
 
+// Функция для преобразования ArrayBuffer в base64url строку
 function arrayBufferToBase64url(buffer) {
     const bytes = new Uint8Array(buffer);
     let binary = '';
@@ -34,25 +40,22 @@ const RegistrationForm = () => {
 
     const startRegistration = async () => {
         try {
-            const response = await axios.get('https://localhost:8000/auth/start-registration/', {
+            // Запрос для начала регистрации
+            const response = await axios.get('/auth/start-registration/', {
                 withCredentials: true
             });
 
-            const options = response.data;
+            if (typeof response.data !== 'object' || !response.data.publicKey || !response.data.publicKey.challenge) {
+                throw new Error('Unexpected response format');
+            }
 
-            // Преобразуем challenge и user.id в Uint8Array
+            const options = response.data.publicKey;
+
+            console.log('Registration options:', options);
+
+            // Преобразование challenge и user.id в формат Uint8Array
             options.challenge = base64urlToUint8Array(options.challenge);
             options.user.id = base64urlToUint8Array(options.user.id);
-
-            // Преобразуем excludeCredentials, если есть
-            if (options.excludeCredentials) {
-                options.excludeCredentials = options.excludeCredentials.map(cred => {
-                    return {
-                        ...cred,
-                        id: base64urlToUint8Array(cred.id)
-                    };
-                });
-            }
 
             // Вызов WebAuthn API для создания нового ключа
             const credential = await navigator.credentials.create({
@@ -71,8 +74,8 @@ const RegistrationForm = () => {
                 clientExtensionResults: credential.getClientExtensionResults(),
             };
 
-            // Отправка данных на сервер
-            await axios.post('https://localhost:8000/auth/finish-registration/', attestationResponse, {
+            // Отправка данных на сервер для завершения регистрации
+            await axios.post('/auth/finish-registration/', attestationResponse, {
                 withCredentials: true,
                 headers: {
                     'Content-Type': 'application/json'
@@ -81,7 +84,7 @@ const RegistrationForm = () => {
 
             setStatus('Регистрация завершена успешно');
         } catch (error) {
-            console.error(error);
+            console.error('Error during registration:', error);
             setStatus('Ошибка при регистрации: ' + error.message);
         }
     };

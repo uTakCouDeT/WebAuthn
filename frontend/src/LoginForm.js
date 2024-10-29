@@ -3,6 +3,11 @@ import React, { useState } from 'react';
 import axios from 'axios';
 
 function base64urlToUint8Array(base64urlString) {
+    if (!base64urlString || typeof base64urlString !== 'string') {
+        console.error('Invalid base64urlString:', base64urlString);
+        return new Uint8Array(); // возвращаем пустой массив, если строка недействительна
+    }
+
     const padding = '='.repeat((4 - (base64urlString.length % 4)) % 4);
     const base64 = (base64urlString + padding)
         .replace(/-/g, '+')
@@ -14,6 +19,7 @@ function base64urlToUint8Array(base64urlString) {
     }
     return outputArray;
 }
+
 
 function arrayBufferToBase64url(buffer) {
     const bytes = new Uint8Array(buffer);
