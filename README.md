@@ -1,2 +1,0 @@
-# WebAuthn
-WebAuthn demo site
